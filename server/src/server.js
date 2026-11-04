@@ -16,44 +16,42 @@ app.use(
   })
 );
 
+
 const defaultAllowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "http://localhost:4173",
   "http://127.0.0.1:4173",
 ];
-const allowedOrigins = new Set(
-  (process.env.FRONTEND_ORIGIN || defaultAllowedOrigins.join(","))
+
+const allowedOrigins = new Set([
+  ...defaultAllowedOrigins,
+  ...(process.env.FRONTEND_ORIGIN || "")
     .split(",")
     .map((origin) => origin.trim())
-    .filter(Boolean)
-    .map((origin) => {
-      try {
-        return new URL(origin).origin;
-      } catch {
-        return origin.replace(/\/$/, "");
-      }
-    })
-);
+    .filter(Boolean),
+].map((origin) => {
+  try {
+    return new URL(origin).origin;
+  } catch {
+    return origin.replace(/\/$/, "");
+  }
+}));
 
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
 
-    let normalizedOrigin = origin;
-    try {
-      normalizedOrigin = new URL(origin).origin;
-    } catch {
-      normalizedOrigin = origin.replace(/\/$/, "");
-    }
+    const normalizedOrigin = new URL(origin).origin;
 
     if (allowedOrigins.has(normalizedOrigin)) {
       return callback(null, true);
     }
 
-    console.warn(`Blocked CORS request from ${origin}`);
-    return callback(null, false);
+    console.warn(`Blocked CORS request from: ${origin}`);
+    return callback(new Error("Not allowed by CORS"));
   },
+
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: [
