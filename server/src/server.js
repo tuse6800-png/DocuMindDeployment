@@ -15,11 +15,57 @@ app.use(
     crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );
-const allowedOrigins = (process.env.FRONTEND_ORIGIN || "http://localhost:5173").split(",").map((origin) => origin.trim());
-app.use(cors({ origin: (origin, callback) => {
-  if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-  return callback(new Error("Origin not allowed by CORS."));
-}, credentials: true }));
+
+const defaultAllowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:4173",
+  "http://127.0.0.1:4173",
+];
+const allowedOrigins = new Set(
+  (process.env.FRONTEND_ORIGIN || defaultAllowedOrigins.join(","))
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+    .map((origin) => {
+      try {
+        return new URL(origin).origin;
+      } catch {
+        return origin.replace(/\/$/, "");
+      }
+    })
+);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+
+    let normalizedOrigin = origin;
+    try {
+      normalizedOrigin = new URL(origin).origin;
+    } catch {
+      normalizedOrigin = origin.replace(/\/$/, "");
+    }
+
+    if (allowedOrigins.has(normalizedOrigin)) {
+      return callback(null, true);
+    }
+
+    console.warn(`Blocked CORS request from ${origin}`);
+    return callback(null, false);
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "X-DocuMind-Access-Token",
+  ],
+};
+
+app.use(cors(corsOptions));
+
 app.use(express.json({ limit: "1mb" }));
 
 app.use("/api/auth", authRoutes);
