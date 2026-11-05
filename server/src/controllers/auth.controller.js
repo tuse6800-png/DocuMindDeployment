@@ -11,8 +11,8 @@ import { readCookie } from "../middleware/authenticate.js";
 
 const cookieOptions = (expires) => ({
   httpOnly: true,
-  sameSite: process.env.COOKIE_SAMESITE || "lax",
-  secure: process.env.NODE_ENV === "production",
+  sameSite: "none",
+  secure: true,
   path: "/",
   ...(expires ? { expires } : {}),
 });
